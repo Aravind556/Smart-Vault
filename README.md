@@ -447,21 +447,105 @@ Then open http://localhost:8080/.
 
 ## Kubernetes Deployment
 
-Kubernetes manifests live in infra/k8s/.
+The Kubernetes implementation lives in [infra/k8s/](infra/k8s/), and it has been wired as a small but complete runtime layer for Smart Vault. The manifests package the backend as a two-replica Deployment, expose it internally through a ClusterIP Service, and inject configuration through a ConfigMap plus a Secret. The result is a standard Kubernetes pattern that keeps non-sensitive defaults in Git while leaving credentials and master-key material out of the repository.
 
-The manifests are intentionally minimal and expect you to supply secrets separately. Apply them with:
+Apply the stack with:
 
 ```bash
 kubectl apply -k infra/k8s
 ```
 
-The kustomization expects a Secret named smartvault-secrets. See infra/k8s/secret.example.yaml for the required shape.
+The kustomization currently includes:
 
-Suggested runtime config in Kubernetes:
+- [configmap.yaml](infra/k8s/configmap.yaml) for the baseline runtime settings.
+- [deployment.yaml](infra/k8s/deployment.yaml) for the backend pods.
+- [service.yaml](infra/k8s/service.yaml) for in-cluster traffic routing.
+- [secret.example.yaml](infra/k8s/secret.example.yaml) as the template for the required secret.
 
-- Mount environment variables from the secret rather than hard-coding values in the deployment.
-- Point SMARTVAULT_S3_ENDPOINT to an internal S3-compatible service only if you are not using native AWS S3.
-- Prefer SMARTVAULT_KEY_PROVIDER=aws-kms in cluster deployments.
+```mermaid
+flowchart TB
+  User[Client / Ingress] --> SVC[ClusterIP Service\nsmartvault-backend]
+  SVC --> POD1[Pod 1\nSmart Vault backend]
+  SVC --> POD2[Pod 2\nSmart Vault backend]
+
+  POD1 --> CM[ConfigMap\nsmartvault-config]
+  POD2 --> CM
+  POD1 --> SEC[Secret\nsmartvault-secrets]
+  POD2 --> SEC
+
+  POD1 --> AWS[(AWS S3 / AWS KMS)]
+  POD2 --> AWS
+```
+
+### How the Kubernetes layer is implemented
+
+The implementation is intentionally conventional so it behaves predictably in cluster environments:
+
+1. The container image is built from [backend/Dockerfile](backend/Dockerfile) using a multi-stage build.
+2. The final runtime image exposes port `8080`, which is the same port the Spring Boot application listens on inside the pod.
+3. The Deployment runs two replicas by default, so the service stays available during restarts and supports basic horizontal availability.
+4. The Service maps cluster port `80` to container port `8080`, which keeps in-cluster access simple while preserving the application port unchanged.
+5. The ConfigMap provides non-secret runtime values such as the key provider, S3 bucket, region, endpoint, and path-style flag.
+6. The Secret provides S3 credentials, the local wrapping master key, and the KMS key identifier when AWS KMS mode is enabled.
+7. The readiness and liveness probes call `/actuator/health`, which means Kubernetes only routes traffic to pods that have started successfully and can also restart pods that become unhealthy.
+
+### Runtime contract inside the pod
+
+The pod environment is assembled from both config and secret sources:
+
+- `SMARTVAULT_KEY_PROVIDER` comes from the ConfigMap.
+- `SMARTVAULT_S3_BUCKET` comes from the ConfigMap.
+- `SMARTVAULT_S3_REGION` comes from the ConfigMap.
+- `SMARTVAULT_S3_ENDPOINT` comes from the ConfigMap.
+- `SMARTVAULT_S3_FORCE_PATH_STYLE` comes from the ConfigMap.
+- `SMARTVAULT_S3_ACCESS_KEY` comes from the Secret.
+- `SMARTVAULT_S3_SECRET_KEY` comes from the Secret.
+- `SMARTVAULT_LOCAL_MASTER_KEY_BASE64` comes from the Secret.
+- `SMARTVAULT_KMS_KEY_ID` comes from the Secret.
+
+That split is important because it lets the same manifest set support both local S3-compatible targets and AWS KMS-backed production deployments without changing the Deployment object itself.
+
+### What the Kubernetes deployment does at runtime
+
+When the pod starts, the container runs the Spring Boot jar built by the Dockerfile. Spring Boot then reads the `smartvault.*` values from environment variables and wires the storage and key-encryption services accordingly:
+
+- `local` mode uses the Base64-encoded master key from the Secret.
+- `aws-kms` mode uses the KMS key ARN or alias from the Secret.
+- the S3 client reads the endpoint and path-style settings from the ConfigMap.
+
+That means Kubernetes is not acting as a custom controller or operator here. It is simply the durable runtime envelope for the existing application, with standard primitives for rollout, health checking, configuration injection, and internal service discovery.
+
+### Secrets and configuration model
+
+The repository keeps [infra/k8s/secret.example.yaml](infra/k8s/secret.example.yaml) as a placeholder so a real Secret can be created per environment. In a production cluster, that Secret should be supplied by your secret delivery mechanism, for example:
+
+- manual `kubectl apply` from a secured workstation,
+- External Secrets Operator,
+- CSI Secret Store,
+- or a GitOps workflow that materializes secrets from a vault backend.
+
+The ConfigMap is safe to version because it contains only non-sensitive defaults. The Secret is not safe to populate with real values in Git, which is why the repository ships only the example shape.
+
+### Operational behavior
+
+The Kubernetes implementation assumes the application is stateless:
+
+- file bytes are persisted to S3 or S3-compatible storage,
+- encryption metadata is stored on the object itself,
+- and no pod-local disk state is required for recovery.
+
+This makes the Deployment horizontally scalable and restart-friendly. If a pod is rescheduled, the next pod can continue serving reads and writes as long as the backing bucket and KMS configuration remain available.
+
+### Why this shape works well for Smart Vault
+
+This implementation matches the application architecture instead of forcing the application to adapt to Kubernetes-specific abstractions:
+
+- the backend already exposes a health endpoint, so probes are easy and meaningful,
+- the application already reads configuration from environment variables, so ConfigMap and Secret injection is natural,
+- the file state already lives in object storage, so there is no database migration or attached volume requirement,
+- and the encryption model already separates metadata from ciphertext, which keeps pod restarts simple.
+
+In practice, the Kubernetes layer is the deployment envelope, not the source of business logic. The actual file-vault behavior remains in the Spring Boot application.
 
 ## Terraform / AWS Infrastructure
 
