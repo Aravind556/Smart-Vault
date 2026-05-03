@@ -1,0 +1,33 @@
+server:
+  port: 8080
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+smartvault:
+  key-provider: ${SMARTVAULT_KEY_PROVIDER:local} # local | aws-kms
+
+  s3:
+    bucket: ${SMARTVAULT_S3_BUCKET:smartvault}
+    region: ${SMARTVAULT_S3_REGION:us-east-1}
+    endpoint: ${SMARTVAULT_S3_ENDPOINT:}
+    access-key: ${SMARTVAULT_S3_ACCESS_KEY:}
+    secret-key: ${SMARTVAULT_S3_SECRET_KEY:}
+    force-path-style: ${SMARTVAULT_S3_FORCE_PATH_STYLE:true}
+
+  kms:
+    region: ${SMARTVAULT_KMS_REGION:${smartvault.s3.region}}
+    key-id: ${SMARTVAULT_KMS_KEY_ID:}
+    endpoint: ${SMARTVAULT_KMS_ENDPOINT:}
+
+  local:
+    master-key-base64: ${SMARTVAULT_LOCAL_MASTER_KEY_BASE64:}

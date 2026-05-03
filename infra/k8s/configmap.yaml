@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smartvault-config
+data:
+  SMARTVAULT_KEY_PROVIDER: "local"
+  SMARTVAULT_S3_BUCKET: "smartvault"
+  SMARTVAULT_S3_REGION: "us-east-1"
+  SMARTVAULT_S3_ENDPOINT: ""
+  SMARTVAULT_S3_FORCE_PATH_STYLE: "true"

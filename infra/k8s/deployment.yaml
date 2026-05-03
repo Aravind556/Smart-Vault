@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smartvault-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: smartvault-backend
+  template:
+    metadata:
+      labels:
+        app: smartvault-backend
+    spec:
+      containers:
+        - name: backend
+          image: 163511165934.dkr.ecr.ap-south-1.amazonaws.com/smartvault-backend:v1.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SMARTVAULT_KEY_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: smartvault-config
+                  key: SMARTVAULT_KEY_PROVIDER
+            - name: SMARTVAULT_S3_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: smartvault-config
+                  key: SMARTVAULT_S3_BUCKET
+            - name: SMARTVAULT_S3_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: smartvault-config
+                  key: SMARTVAULT_S3_REGION
+            - name: SMARTVAULT_S3_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: smartvault-config
+                  key: SMARTVAULT_S3_ENDPOINT
+            - name: SMARTVAULT_S3_FORCE_PATH_STYLE
+              valueFrom:
+                configMapKeyRef:
+                  name: smartvault-config
+                  key: SMARTVAULT_S3_FORCE_PATH_STYLE
+            - name: SMARTVAULT_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smartvault-secrets
+                  key: SMARTVAULT_S3_ACCESS_KEY
+            - name: SMARTVAULT_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: smartvault-secrets
+                  key: SMARTVAULT_S3_SECRET_KEY
+            - name: SMARTVAULT_LOCAL_MASTER_KEY_BASE64
+              valueFrom:
+                secretKeyRef:
+                  name: smartvault-secrets
+                  key: SMARTVAULT_LOCAL_MASTER_KEY_BASE64
+            - name: SMARTVAULT_KMS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: smartvault-secrets
+                  key: SMARTVAULT_KMS_KEY_ID
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 20

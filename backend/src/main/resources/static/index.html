@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Vault</title>
+  <style>
+    :root {
+      --bg: #f2f5f9;
+      --bg-accent: #dbe9ff;
+      --card: #ffffffcc;
+      --text: #172336;
+      --muted: #52617a;
+      --border: #d7dfec;
+      --focus: #2f6fec;
+      --btn: #1f5bd8;
+      --btn-hover: #1849af;
+      --shadow: 0 14px 40px rgba(24, 58, 122, 0.12);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Segoe UI Variable", "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      padding: 28px 16px;
+      background:
+        radial-gradient(1100px 600px at 8% -5%, var(--bg-accent), transparent 70%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      max-width: 900px;
+      margin-inline: auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      letter-spacing: 0.2px;
+      font-size: clamp(1.7rem, 2.2vw, 2.2rem);
+    }
+
+    .muted {
+      color: var(--muted);
+      max-width: 72ch;
+      line-height: 1.45;
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin: 18px 0;
+      background: var(--card);
+      backdrop-filter: blur(6px);
+      box-shadow: var(--shadow);
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 7px;
+      font-weight: 650;
+      color: #1f2f4b;
+    }
+
+    input[type="text"],
+    input[type="file"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.97rem;
+      color: var(--text);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    input[type="text"]:focus,
+    input[type="file"]:focus {
+      outline: none;
+      border-color: var(--focus);
+      box-shadow: 0 0 0 4px rgba(47, 111, 236, 0.14);
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      border: 0;
+      border-radius: 10px;
+      background: var(--btn);
+      color: #fff;
+      font-weight: 650;
+      letter-spacing: 0.1px;
+      cursor: pointer;
+      transition: background-color 0.18s ease, transform 0.08s ease;
+    }
+
+    button:hover {
+      background: var(--btn-hover);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    pre {
+      background: #f6f9ff;
+      border: 1px solid #dce6fa;
+      padding: 12px;
+      border-radius: 10px;
+      overflow: auto;
+      line-height: 1.35;
+      font-size: 0.92rem;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .row > div {
+      flex: 1;
+    }
+
+    .status {
+      margin-top: 10px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 18px 12px;
+      }
+
+      .row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .row > div,
+      .row > div[style] {
+        flex: 1 !important;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Smart Vault</h1>
+  <div class="muted">Upload encrypts with AES-256 envelope encryption and stores to S3-compatible storage.</div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Upload</h2>
+    <label for="file">File</label>
+    <input id="file" type="file" />
+    <button id="uploadBtn">Upload</button>
+
+    <pre class="status" id="uploadStatus" style="margin:10px 0 0; display:none"></pre>
+
+    <div id="uploadResult" style="display:none">
+      <label>Result</label>
+      <pre id="uploadJson"></pre>
+
+      <div class="row">
+        <div>
+          <label for="downloadId">File ID</label>
+          <input id="downloadId" type="text" />
+        </div>
+        <div style="flex:0">
+          <button id="downloadBtn">Download</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-top:0">Download</h2>
+    <div class="row">
+      <div>
+        <label for="downloadId2">File ID</label>
+        <input id="downloadId2" type="text" placeholder="paste an id" />
+      </div>
+      <div style="flex:0">
+        <button id="downloadBtn2">Download</button>
+      </div>
+    </div>
+    <pre class="status" id="downloadStatus" style="margin:10px 0 0; display:none"></pre>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
