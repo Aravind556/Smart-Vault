@@ -603,6 +603,27 @@ What it does not do by itself:
 - It does not provide document-level search or indexing.
 - It does not remove the need to protect the runtime environment, logs, and credentials.
 
+## Production Readiness Checklist
+
+Before exposing this service outside a trusted development environment:
+
+1. Put the API behind an authentication and authorization layer. Object IDs are opaque identifiers, not access controls.
+2. Use `aws-kms` in production and provide an IAM role with only the required S3 and KMS permissions.
+3. Configure a real bucket, region, and KMS key ID; do not deploy the Kubernetes example values unchanged.
+4. Create `smartvault-secrets` with the required values before applying the Kubernetes manifests. Local mode requires a Base64-encoded 32-byte master key.
+5. Enable S3 public-access blocking, TLS-only bucket access, lifecycle retention rules, and audit logging.
+6. Set CPU and memory limits, run containers as non-root, and restrict network access with Kubernetes policies.
+7. Test upload/download and a failed download against the target storage provider before releasing.
+
+## API Error Behavior
+
+- Missing objects return `404 Not Found`.
+- Invalid client input, such as an empty upload, returns `400 Bad Request`.
+- Processing failures detected before the download response starts return `500 Internal Server Error` without exposing implementation details.
+- Download filenames are emitted as UTF-8 attachment headers and control characters are removed before the response is built.
+
+The service accepts files up to 200 MB by default. Change `spring.servlet.multipart.max-file-size` and `spring.servlet.multipart.max-request-size` together if a different limit is required.
+
 ## Repository Layout
 
 ```text
