@@ -1,7 +1,9 @@
 package com.smartvault.api;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
+import org.springframework.http.ContentDisposition;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -51,7 +53,8 @@ public class FileController {
   }
 
   private static String contentDisposition(String filename) {
-    String safe = filename == null || filename.isBlank() ? "file" : filename.replace("\"", "");
-    return "attachment; filename=\"" + safe + "\"";
+    String safe = filename == null || filename.isBlank() ? "file" : filename;
+    safe = safe.replaceAll("[\\p{Cntrl}]", "_");
+    return ContentDisposition.attachment().filename(safe, StandardCharsets.UTF_8).build().toString();
   }
 }

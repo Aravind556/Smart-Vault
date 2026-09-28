@@ -23,7 +23,8 @@ public class ApiExceptionHandler {
   }
 
   @ExceptionHandler(IllegalStateException.class)
-  public ResponseEntity<Map<String, Object>> misconfig(IllegalStateException ex) {
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+  public ResponseEntity<Map<String, Object>> internalError(IllegalStateException ex) {
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(Map.of("error", "The file could not be processed"));
   }
 }
